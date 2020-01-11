@@ -1,29 +1,41 @@
 -module(main).
 -compile([export_all]).
 
+main() ->
+    lightsInit().
 
+%%%%% PROCESY %%%%%
+
+% pojedyńcze światło
 light(State, LightsToRed) -> 
     receive
         red ->
-            if
-                State == green ->
-                    State = red,
-                    turnLights(red, LightsToRed)
-            end,
-            light(State, LightsToRed);
+            light(red, LightsToRed);
         green ->
             if 
                 State == red ->
-                    State = green
+                    turnLights(red, LightsToRed);
+                true -> ok
             end,
-            light(State, LightsToRed);
+            light(green, LightsToRed);
         List ->
-            io:format("got List"),
             light(State, List)
     end.
 
 
-turnLights(State, List) -> todo.
+% kontroler zarządzający światłami, posiada dictionary {PID, NazwaŚwiatła}
+statesController(ProcessDict) -> todo.
+
+
+
+
+%%%%% FUNKCJE POMOCNICZE %%%%%
+
+
+turnLights(_, []) -> ok;
+turnLights(State, [PID | Rest]) -> 
+    PID!State,
+    turnLights(State, Rest).
 
 lightsInit() ->
     % W - zachodnie swiatło
@@ -36,6 +48,7 @@ lightsInit() ->
     % S - prosto
     % C - pasy
 
+    % spawnowanie każdego światła
     LightWR = spawn(main, light, [red, []]),
     LightWL = spawn(main, light, [red, []]),
     LightWS = spawn(main, light, [red, []]),
@@ -56,24 +69,35 @@ lightsInit() ->
     LightSS = spawn(main, light, [red, []]),
     LightSC = spawn(main, light, [red, []]),
 
+    % wysyłanie zależnych swiateł
     LightWR![LightWC, LightSC, LightEL, LightNS],
-    LightWL![], 
-    LightWS![],
-    LightWC![],
+    LightWL![LightWC, LightNC, LightNS, LightNL, LightSS, LightSL, LightES, LightER], 
+    LightWS![LightWC, LightEC, LightNS, LightNL, LightSL, LightSS, LightSR, LightEL],
+    LightWC![LightNL, LightNS, LightNR, LightNR, LightSL, LightES],
 
     LightER![LightEC, LightNC, LightWL, LightSS],
-    LightEL![],
-    LightES![],
-    LightEC![],
+    LightEL![LightEC, LightSC, LightNL, LightNS, LightWS, LightWR, LightSS, LightSL],
+    LightES![LightEC, LightWC, LightNL, LightNS, LightNR, LightWL, LightSL, LightSS],
+    LightEC![LightEL, LightER, LightES, LightNL, LightWS, LightSR],
 
     LightNR![LightNC, LightWC, LightSL, LightES],
-    LightNL![],
-    LightNS![],
-    LightNC![],
+    LightNL![LightNC, LightEC, LightWL, LightWS, LightSS, LightSR, LightES, LightEL],
+    LightNS![LightNC, LightSC, LightWL, LightWS, LightWR, LightSL, LightEL, LightES],
+    LightNC![LightNL, LightNS, LightNS, LightWL, LightSS, LightER],
 
     LightSR![LightSC, LightEC, LightWS, LightNL],
-    LightSL![],
-    LightSS![],
-    LightSC![],
+    LightSL![LightSC, LightWC, LightNS, LightNR, LightWL, LightWS, LightES, LightEL],
+    LightSS![LightSC, LightNC, LightNL, LightWL, LightWS, LightES, LightER, LightEL],
+    LightSC![LightNS, LightWR, LightSS, LightSR, LightSL, LightEL],
 
+    %tworzenie dictionary świateł
+    ProcessList = [
+    {LightWR, "LightWR"}, {LightWL, "LightWL"}, {LightWS, "LightWS"}, {LightWC, "LightWC"},
+    {LightER, "LightER"}, {LightEL, "LightEL"}, {LightES, "LightES"}, {LightEC, "LightEC"},
+    {LightNR, "LightNR"}, {LightNL, "LightNL"}, {LightNS, "LightNS"}, {LightNC, "LightNC"},
+    {LightSR, "LightSR"}, {LightSL, "LightSL"}, {LightSS, "LightSS"}, {LightSC, "LightSC"}],
+    ProcessDict = dict:from_list(ProcessList),
+
+    % spawnowanie kontrolera świateł
+    spawn(main, statesController, [ProcessDict]),
     ok.
