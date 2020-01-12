@@ -4,8 +4,8 @@
 %timer:sleep(timer:seconds(1)),
 
 main() ->
-    lightsInit(),
-    printInit().
+    printInit(),
+    lightsInit().
 
 %%%%% PROCESY %%%%%
 
@@ -118,7 +118,7 @@ lightsInit() ->
     ProcessDict = dict:from_list(ProcessList),
     Controller!{processDict, ProcessDict},
     
-    spawn(main, lightUserInput, [ProcessList]),
+    lightUserInput(ProcessList),
     ok.
 
 
