@@ -139,8 +139,9 @@ lightUserInput(ProcessList) ->
 
 search([], _) -> ok;
 search([H|T], Val) ->
+    A = string:uppercase(element(2, H)),
     if 
-        element(2, H) == Val ->
+        A == Val ->
             element(1, H);
         true -> 
             search(T, Val)
