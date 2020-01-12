@@ -115,6 +115,11 @@ lightsInit() ->
     {LightER, "LightER"}, {LightEL, "LightEL"}, {LightES, "LightES"}, {LightEC, "LightEC"},
     {LightNR, "LightNR"}, {LightNL, "LightNL"}, {LightNS, "LightNS"}, {LightNC, "LightNC"},
     {LightSR, "LightSR"}, {LightSL, "LightSL"}, {LightSS, "LightSS"}, {LightSC, "LightSC"}],
+    % ProcessList = [
+    % {"LightWR", LightWR}, {"LightWL", LightWL}, {"LightWS", LightWS}, {"LightWC",LightWC},
+    % {"LightER", LightER}, {"LightEL", LightEL}, {"LightES", LightES}, {"LightEC", LightEC},
+    % {"LightNR", LightNR}, {"LightNL", LightNL}, {"LightNS", LightNS}, {"LightNC", LightNC},
+    % {"LightSR", LightSR}, {"LightSL", LightSL}, {"LightSS", LightSS}, {"LightSC", LightSC}],
     ProcessDict = dict:from_list(ProcessList),
     Controller!{processDict, ProcessDict},
     
@@ -123,10 +128,24 @@ lightsInit() ->
 
 
 lightUserInput(ProcessList) ->
-    timer:sleep(timer:seconds(1)),
-    R = rand:uniform(16),
-    element(1,lists:nth(R,ProcessList))!green,
+    % timer:sleep(timer:seconds(1)),
+    % R = rand:uniform(16),
+    % element(1,lists:nth(R,ProcessList))!green,
+    print({gotoxy,1,23}),
+    {ok, Term} = io:read(""),
+    % print({gotoxy,1,23}),
+    search(ProcessList, string:uppercase(atom_to_list(Term)))!green,
     lightUserInput(ProcessList).
+
+search([], _) -> ok;
+search([H|T], Val) ->
+    if 
+        element(2, H) == Val ->
+            element(1, H);
+        true -> 
+            search(T, Val)
+    end.
+
 
 %%%%% GUI %%%%%
 
