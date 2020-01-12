@@ -4,8 +4,11 @@
 %timer:sleep(timer:seconds(1)),
 
 main() ->
+    print({gotoxy,1,23}),
+    {ok, Term} = io:read("Automatyczna zmiana świateł [y/n]: "),
+    A = atom_to_list(Term),
     printInit(),
-    lightsInit().
+    lightsInit(A).
 
 %%%%% PROCESY %%%%%
 
@@ -53,7 +56,7 @@ turnLights(State, [PID | Rest]) ->
     PID!State,
     turnLights(State, Rest).
 
-lightsInit() ->
+lightsInit(A) ->
     % spawnowanie kontrolera świateł
     Controller = spawn(main, statesController, [[]]),
     
@@ -123,7 +126,14 @@ lightsInit() ->
     ProcessDict = dict:from_list(ProcessList),
     Controller!{processDict, ProcessDict},
     
-    lightUserInput(ProcessList),
+
+    if 
+        A == "y" -> 
+            lightUserInputRandom(ProcessList);
+        true ->
+            lightUserInput(ProcessList)
+    end,
+    % lightUserInput(ProcessList),
     ok.
 
 
@@ -136,6 +146,13 @@ lightUserInput(ProcessList) ->
     % print({gotoxy,1,23}),
     search(ProcessList, string:uppercase(atom_to_list(Term)))!green,
     lightUserInput(ProcessList).
+
+lightUserInputRandom(ProcessList) ->
+    timer:sleep(timer:seconds(1)),
+    R = rand:uniform(16),
+    element(1,lists:nth(R,ProcessList))!green,
+    print({gotoxy,1,23}),
+    lightUserInputRandom(ProcessList).
 
 search([], _) -> ok;
 search([H|T], Val) ->
@@ -171,8 +188,8 @@ printVerticalRoad(X, Y, N) when N > 0 ->
     print({printxy, X, Y, "|"}),
     printVerticalRoad(X, Y - 1, N - 1).
 
-printLight(State, "LightWR") -> printState(State, 34, 13);
-printLight(State, "LightWL") -> printState(State, 34, 15);
+printLight(State, "LightWR") -> printState(State, 34, 15);
+printLight(State, "LightWL") -> printState(State, 34, 13);
 printLight(State, "LightWS") -> printState(State, 34, 14);
 printLight(State, "LightWC") -> 
     printState(State, 32, 8),
