@@ -1,11 +1,12 @@
 -module(main).
 -compile([export_all]).
 
-%timer:sleep(timer:seconds(1)),
-
 main() ->
-    print({gotoxy,1,23}),
-    {ok, Term} = io:read("Automatyczna zmiana świateł [y/n]: "),
+    print({clear}),
+    {ok, Term} = io:read(   " a. Randomowa zmiana świateł na zielone co 2 sec.
+ b. Wspisywanie zmienianych swiatel 
+ c. Zmienianie najdluzej niezmienianych swiatel co 2 sec
+    Wybór: "),
     A = atom_to_list(Term),
     printInit(),
     lightsInit(A).
@@ -34,7 +35,6 @@ light(State, ControllerPID, LightsToRed) ->
             light(State, ControllerPID, List)
     end.
 
-
 % kontroler zarządzający światłami, posiada dictionary {PID, NazwaŚwiatła}
 statesController(ProcessDict) ->
     receive
@@ -44,10 +44,6 @@ statesController(ProcessDict) ->
             printLight(State, dict:fetch(PID, ProcessDict)),
             statesController(ProcessDict)
     end.
-
-
-    
-
 
 %%%%% FUNKCJE POMOCNICZE %%%%%
 
@@ -118,37 +114,79 @@ lightsInit(A) ->
     {LightER, "LightER"}, {LightEL, "LightEL"}, {LightES, "LightES"}, {LightEC, "LightEC"},
     {LightNR, "LightNR"}, {LightNL, "LightNL"}, {LightNS, "LightNS"}, {LightNC, "LightNC"},
     {LightSR, "LightSR"}, {LightSL, "LightSL"}, {LightSS, "LightSS"}, {LightSC, "LightSC"}],
-    % ProcessList = [
-    % {"LightWR", LightWR}, {"LightWL", LightWL}, {"LightWS", LightWS}, {"LightWC",LightWC},
-    % {"LightER", LightER}, {"LightEL", LightEL}, {"LightES", LightES}, {"LightEC", LightEC},
-    % {"LightNR", LightNR}, {"LightNL", LightNL}, {"LightNS", LightNS}, {"LightNC", LightNC},
-    % {"LightSR", LightSR}, {"LightSL", LightSL}, {"LightSS", LightSS}, {"LightSC", LightSC}],
     ProcessDict = dict:from_list(ProcessList),
     Controller!{processDict, ProcessDict},
     
-
     if 
-        A == "y" -> 
+        A == "a" -> 
             lightUserInputRandom(ProcessList);
-        true ->
-            lightUserInput(ProcessList)
+        A == "b" ->
+            lightUserInput(ProcessList);
+        true -> 
+            LightsChangeList = [
+                {LightWR, 0}, {LightWL, 0}, {LightWS, 0}, {LightWC, 0},
+                {LightER, 0}, {LightEL, 0}, {LightES, 0}, {LightEC, 0},
+                {LightNR, 0}, {LightNL, 0}, {LightNS, 0}, {LightNC, 0},
+                {LightSR, 0}, {LightSL, 0}, {LightSS, 0}, {LightSC, 0}],
+            LightsChange = dict:from_list(LightsChangeList),
+
+            % akutalny stan świateł; 0 - red; 1 - green
+            CurrentStatesList =  [
+                {LightWR, 0}, {LightWL, 0}, {LightWS, 0}, {LightWC, 0},
+                {LightER, 0}, {LightEL, 0}, {LightES, 0}, {LightEC, 0},
+                {LightNR, 0}, {LightNL, 0}, {LightNS, 0}, {LightNC, 0},
+                {LightSR, 0}, {LightSL, 0}, {LightSS, 0}, {LightSC, 0}],
+            CurrentStates = dict:from_list(CurrentStatesList),
+        lightSequence(LightsChange, CurrentStates)
     end,
-    % lightUserInput(ProcessList),
     ok.
+
+lightSequence(LightsChange, CurrentStates) -> 
+    % szukanie najdłużej niezmienianych świateł
+    Max = findMaxinDict(LightsChange),
+
+    % zwiększenie liczników zmiany świateł o 1
+    increaseStates(LightsChange),
+
+    % ustawianie nowego koloru światła
+    CurrentStates = setNewState(Max, LightsChange, CurrentStates),
+
+    lightSequence(LightsChange, CurrentStates).
+
+
+increaseStates(LightsChange) -> ok.
+findMax(Keys, Dict) -> ok.
+
+setNewState(Key, LightsChange, CurrentStates) ->
+    CurrentState = getCurrentState(Key, LightsChange),
+    if
+        CurrentState == 0 ->
+            Key!green;
+        true ->
+            Key!red
+    end,
+    dict:store(Key,0,LightsChange),
+    CurrentStates.
+    
+
+getCurrentState(Key, Dict) ->
+    dict:fetch(Key, Dict).
+
+
+findMaxinDict(Dict) ->
+    Keys = dict:fetch_keys(Dict),
+    findMax(Keys, Dict).
 
 
 lightUserInput(ProcessList) ->
-    % timer:sleep(timer:seconds(1)),
-    % R = rand:uniform(16),
-    % element(1,lists:nth(R,ProcessList))!green,
     print({gotoxy,1,23}),
     {ok, Term} = io:read(""),
-    % print({gotoxy,1,23}),
+    print({printxy, 1, 23, "                 "}),
     search(ProcessList, string:uppercase(atom_to_list(Term)))!green,
     lightUserInput(ProcessList).
 
 lightUserInputRandom(ProcessList) ->
-    timer:sleep(timer:seconds(1)),
+    timer:sleep(timer:seconds(2)),
     R = rand:uniform(16),
     element(1,lists:nth(R,ProcessList))!green,
     print({gotoxy,1,23}),
@@ -166,7 +204,6 @@ search([H|T], Val) ->
 
 
 %%%%% GUI %%%%%
-
 print({gotoxy,X,Y}) ->
     io:format("\e[~p;~pH", [Y,X]);
 print({printxy,X,Y,Msg}) ->
@@ -206,8 +243,8 @@ printLight(State, "LightNS") -> printState(State, 37, 8);
 printLight(State, "LightNC") -> 
     printState(State, 35, 7),
     printState(State, 45, 7);
-printLight(State, "LightSR") -> printState(State, 42, 16);
-printLight(State, "LightSL") -> printState(State, 44, 16);
+printLight(State, "LightSR") -> printState(State, 44, 16);
+printLight(State, "LightSL") -> printState(State, 42, 16);
 printLight(State, "LightSS") -> printState(State, 43, 16);
 printLight(State, "LightSC") -> 
     printState(State, 35, 17),
@@ -216,9 +253,9 @@ printLight(State, "LightSC") ->
 printState(State, X, Y) ->
     if 
         State == red ->
-            print({printxy, X, Y, "R"});
+            print({printxy, X, Y, "X"});
         true -> 
-            print({printxy, X, Y, "G"})
+            print({printxy, X, Y, "O"})
     end,
     print({gotoxy,1,23}).
 
@@ -232,7 +269,6 @@ printInit()->
     printVerticalRoad(45, 8, 8),
     printVerticalRoad(35, 23, 8),
     printVerticalRoad(45, 23, 8),
-
     printLight(red, "LightWR"),
     printLight(red, "LightWL"),
     printLight(red, "LightWS"),
@@ -249,7 +285,4 @@ printInit()->
     printLight(red, "LightSL"),
     printLight(red, "LightSS"),
     printLight(red, "LightSC"),
-    print({printxy, 60, 19, "Enter R to change"}),
-    print({printxy, 60, 20, "random lights"}),
-    print({printxy, 60, 21, "to green, Q to exit"}),
     print({gotoxy,1,23}).
