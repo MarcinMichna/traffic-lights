@@ -91,7 +91,7 @@ lightsInit(A) ->
     LightWR![LightWC, LightSC, LightEL, LightNS],
     LightWL![LightWC, LightNC, LightNS, LightNL, LightSS, LightSL, LightES, LightER], 
     LightWS![LightWC, LightEC, LightNS, LightNL, LightSL, LightSS, LightSR, LightEL],
-    LightWC![LightNL, LightNS, LightNR, LightNR, LightSL, LightES],
+    LightWC![LightWL, LightWS, LightWR, LightNR, LightSL, LightES],
 
     LightER![LightEC, LightNC, LightWL, LightSS],
     LightEL![LightEC, LightSC, LightNL, LightNS, LightWS, LightWR, LightSS, LightSL],
@@ -101,7 +101,7 @@ lightsInit(A) ->
     LightNR![LightNC, LightWC, LightSL, LightES],
     LightNL![LightNC, LightEC, LightWL, LightWS, LightSS, LightSR, LightES, LightEL],
     LightNS![LightNC, LightSC, LightWL, LightWS, LightWR, LightSL, LightEL, LightES],
-    LightNC![LightNL, LightNS, LightNS, LightWL, LightSS, LightER],
+    LightNC![LightNL, LightNS, LightNR, LightWL, LightSS, LightER],
 
     LightSR![LightSC, LightEC, LightWS, LightNL],
     LightSL![LightSC, LightWC, LightNS, LightNR, LightWL, LightWS, LightES, LightEL],
@@ -128,69 +128,31 @@ lightsInit(A) ->
                 {LightER, 0}, {LightEL, 0}, {LightES, 0}, {LightEC, 0},
                 {LightNR, 0}, {LightNL, 0}, {LightNS, 0}, {LightNC, 0},
                 {LightSR, 0}, {LightSL, 0}, {LightSS, 0}, {LightSC, 0}],
-            LightsChange = dict:from_list(LightsChangeList),
 
-            % akutalny stan świateł; 0 - red; 1 - green
             CurrentStatesList =  [
-                {LightWR, 0}, {LightWL, 0}, {LightWS, 0}, {LightWC, 0},
-                {LightER, 0}, {LightEL, 0}, {LightES, 0}, {LightEC, 0},
-                {LightNR, 0}, {LightNL, 0}, {LightNS, 0}, {LightNC, 0},
-                {LightSR, 0}, {LightSL, 0}, {LightSS, 0}, {LightSC, 0}],
-            CurrentStates = dict:from_list(CurrentStatesList),
-        lightSequence(LightsChange, CurrentStates)
+            {LightWR, red}, {LightNL, red}, {LightSL, red}, {LightER, red}, 
+            {LightSS, red}, {LightWS, red}, {LightEL, red}, {LightES, red}, 
+            {LightNC, red}, {LightEC, red}, {LightWC, red}, {LightNR, red}, 
+            {LightSR, red}, {LightNS, red}, {LightWL, red}, {LightSC, red}],
+        lightSequence(LightsChangeList, CurrentStatesList)
     end,
     ok.
 
-lightSequence(LightsChange, CurrentStates) -> 
-    % szukanie najdłużej niezmienianych świateł
-    Max = findMaxinDict(LightsChange),
-
-    % zwiększenie liczników zmiany świateł o 1
-    increaseStates(LightsChange),
-
-    % ustawianie nowego koloru światła
-    CurrentStates = setNewState(Max, LightsChange, CurrentStates),
-
-    lightSequence(LightsChange, CurrentStates).
-
-
-increaseStates(LightsChange) -> ok.
-findMax(Keys, Dict) -> ok.
-
-setNewState(Key, LightsChange, CurrentStates) ->
-    CurrentState = getCurrentState(Key, LightsChange),
-    if
-        CurrentState == 0 ->
-            Key!green;
-        true ->
-            Key!red
-    end,
-    dict:store(Key,0,LightsChange),
-    CurrentStates.
-    
-
-getCurrentState(Key, Dict) ->
-    dict:fetch(Key, Dict).
-
-
-findMaxinDict(Dict) ->
-    Keys = dict:fetch_keys(Dict),
-    findMax(Keys, Dict).
-
-
-lightUserInput(ProcessList) ->
-    print({gotoxy,1,23}),
-    {ok, Term} = io:read(""),
-    print({printxy, 1, 23, "                 "}),
-    search(ProcessList, string:uppercase(atom_to_list(Term)))!green,
-    lightUserInput(ProcessList).
-
+% opcja a.
 lightUserInputRandom(ProcessList) ->
     timer:sleep(timer:seconds(2)),
     R = rand:uniform(16),
     element(1,lists:nth(R,ProcessList))!green,
     print({gotoxy,1,23}),
     lightUserInputRandom(ProcessList).
+
+% opcja b.
+lightUserInput(ProcessList) ->
+    print({gotoxy,1,23}),
+    {ok, Term} = io:read(""),
+    print({printxy, 1, 23, "                 "}),
+    search(ProcessList, string:uppercase(atom_to_list(Term)))!green,
+    lightUserInput(ProcessList).
 
 search([], _) -> ok;
 search([H|T], Val) ->
@@ -202,6 +164,79 @@ search([H|T], Val) ->
             search(T, Val)
     end.
 
+% opcja c.
+
+% LightsChange - zliczanie cykli od zmiany świateł
+% CurrentStates - aktualne stany świateł
+lightSequence(LightsChange, CurrentStates) -> 
+    print({gotoxy,1,15}),
+    io:format("~p", [CurrentStates]),
+
+    % szukanie najdłużej niezmienianych świateł
+    Max = findMaxinList(LightsChange),
+
+    % zwiększenie liczników zmiany świateł o 1
+    LightsChange1 = increaseStates(LightsChange, []),
+
+    % ustawianie nowego koloru światła
+    CurrentStates1 = setNewState(Max, CurrentStates),
+
+    % zerowanie zmienionego światła w liczniku
+    LightsChange2 = decreaseChangedState(Max, LightsChange1, []),
+
+    timer:sleep(timer:seconds(2)),
+    lightSequence(LightsChange2, CurrentStates1).
+
+increaseStates([], Result) -> Result;
+increaseStates([X | Rest], Result) ->
+    increaseStates(Rest, Result ++ [{element(1, X), element(2, X) + 1}]).
+
+findMaxinList([X | Rest]) ->
+    findMax(X ,Rest).
+
+findMax(Current, []) -> Current;
+findMax(Current, [X | Rest]) -> 
+    if 
+        element(2, Current) < element(2, X) -> findMax(X, Rest);
+        true -> findMax(Current, Rest)
+    end.
+
+decreaseChangedState(Max, [X | Rest], Result) ->
+    Key = element(1, Max),
+    if 
+        Key == element(1, X) -> Result ++ [{Key, 0}] ++ Rest;
+        true -> decreaseChangedState(Max, Rest, Result ++ [X])
+    end.
+    
+setNewState(Max, CurrentStates) ->
+    Current = getCurrentState(Max, CurrentStates),
+    if
+        Current == red ->
+            element(1, Max)!green;
+        true ->
+            element(1, Max)!red
+    end,
+    updateStates(Max, CurrentStates, []).
+    
+getCurrentState(_, []) -> ok;
+getCurrentState(Max, [X | Rest]) ->
+    Key = element(1, Max),
+    if 
+        element(1, X) == Key -> element(2, X);
+        true -> getCurrentState(Max, Rest)
+    end.
+
+updateStates(_, [], R) -> R;
+updateStates(Max, [X | Rest], Result) ->
+    Key = element(1, Max),
+    if 
+        element(1,X) == Key -> 
+            if 
+                element(2, X) == green -> updateStates(Max, Rest, Result ++ [{element(1, X), red}]);
+                true -> updateStates(Max, Rest, Result ++ [{element(1, X), green}])
+            end;
+        true -> updateStates(Max, Rest, Result ++ [X])
+    end.
 
 %%%%% GUI %%%%%
 print({gotoxy,X,Y}) ->
