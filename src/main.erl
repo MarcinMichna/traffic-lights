@@ -17,20 +17,23 @@ main() ->
 light(State, ControllerPID, LightsToRed) -> 
     receive
         red ->
-            if
-                State == green ->
-                    ControllerPID!{self(),red};
-                true -> ok
-            end,
-                light(red, ControllerPID, LightsToRed);
+            ControllerPID!{self(),red},
+            light(red, ControllerPID, LightsToRed);
         green ->
-            if 
-                State == red ->
-                    turnLights(red, LightsToRed);
-                true -> ok
-            end,
+            turnLights(red, LightsToRed),
             ControllerPID!{self(),green},
             light(green, ControllerPID, LightsToRed);
+        change ->
+            if 
+                State == red ->
+                    turnLights(red, LightsToRed),
+                    ControllerPID!{self(),green},
+                    light(green, ControllerPID, LightsToRed);
+                true -> 
+
+                    ControllerPID!{self(),red},
+                    light(red, ControllerPID, LightsToRed)
+            end;
         List ->
             light(State, ControllerPID, List)
     end.
@@ -124,17 +127,12 @@ lightsInit(A) ->
             lightUserInput(ProcessList);
         true -> 
             LightsChangeList = [
-                {LightWR, 0}, {LightWL, 0}, {LightWS, 0}, {LightWC, 0},
-                {LightER, 0}, {LightEL, 0}, {LightES, 0}, {LightEC, 0},
-                {LightNR, 0}, {LightNL, 0}, {LightNS, 0}, {LightNC, 0},
-                {LightSR, 0}, {LightSL, 0}, {LightSS, 0}, {LightSC, 0}],
-
-            CurrentStatesList =  [
-            {LightWR, red}, {LightNL, red}, {LightSL, red}, {LightER, red}, 
-            {LightSS, red}, {LightWS, red}, {LightEL, red}, {LightES, red}, 
-            {LightNC, red}, {LightEC, red}, {LightWC, red}, {LightNR, red}, 
-            {LightSR, red}, {LightNS, red}, {LightWL, red}, {LightSC, red}],
-        lightSequence(LightsChangeList, CurrentStatesList)
+                {LightEC, 0},{LightEL, 0},{LightWC, 0},{LightWL, 0}, 
+                {LightSS, 0},{LightES, 0},{LightNL, 0},{LightER, 0},
+                {LightSR, 0},{LightNS, 0},{LightNR, 0},{LightSC, 0},
+                {LightNC, 0},{LightWS, 0},{LightWR, 0},{LightSL, 0}
+            ],
+        lightSequence(LightsChangeList)
     end,
     ok.
 
@@ -168,10 +166,8 @@ search([H|T], Val) ->
 
 % LightsChange - zliczanie cykli od zmiany świateł
 % CurrentStates - aktualne stany świateł
-lightSequence(LightsChange, CurrentStates) -> 
-    print({gotoxy,1,15}),
-    io:format("~p", [CurrentStates]),
-
+lightSequence(LightsChange) -> 
+    
     % szukanie najdłużej niezmienianych świateł
     Max = findMaxinList(LightsChange),
 
@@ -179,20 +175,29 @@ lightSequence(LightsChange, CurrentStates) ->
     LightsChange1 = increaseStates(LightsChange, []),
 
     % ustawianie nowego koloru światła
-    CurrentStates1 = setNewState(Max, CurrentStates),
+    setNewState(Max),
 
     % zerowanie zmienionego światła w liczniku
     LightsChange2 = decreaseChangedState(Max, LightsChange1, []),
 
     timer:sleep(timer:seconds(2)),
-    lightSequence(LightsChange2, CurrentStates1).
+    lightSequence(LightsChange2).
 
 increaseStates([], Result) -> Result;
 increaseStates([X | Rest], Result) ->
     increaseStates(Rest, Result ++ [{element(1, X), element(2, X) + 1}]).
 
 findMaxinList([X | Rest]) ->
-    findMax(X ,Rest).
+    Max = findMax(X ,Rest),
+    List = maxList(Max, [X] ++ Rest, []),
+    lists:nth(rand:uniform(length(List)), List).
+
+maxList(_, [], Res) -> Res;
+maxList(Max, [X | Rest], Result) ->
+    if 
+        element(2, Max) == element(2, X) -> maxList(Max, Rest, Result ++ [X]);
+        true -> maxList(Max, Rest, Result)
+    end.
 
 findMax(Current, []) -> Current;
 findMax(Current, [X | Rest]) -> 
@@ -208,35 +213,8 @@ decreaseChangedState(Max, [X | Rest], Result) ->
         true -> decreaseChangedState(Max, Rest, Result ++ [X])
     end.
     
-setNewState(Max, CurrentStates) ->
-    Current = getCurrentState(Max, CurrentStates),
-    if
-        Current == red ->
-            element(1, Max)!green;
-        true ->
-            element(1, Max)!red
-    end,
-    updateStates(Max, CurrentStates, []).
-    
-getCurrentState(_, []) -> ok;
-getCurrentState(Max, [X | Rest]) ->
-    Key = element(1, Max),
-    if 
-        element(1, X) == Key -> element(2, X);
-        true -> getCurrentState(Max, Rest)
-    end.
-
-updateStates(_, [], R) -> R;
-updateStates(Max, [X | Rest], Result) ->
-    Key = element(1, Max),
-    if 
-        element(1,X) == Key -> 
-            if 
-                element(2, X) == green -> updateStates(Max, Rest, Result ++ [{element(1, X), red}]);
-                true -> updateStates(Max, Rest, Result ++ [{element(1, X), green}])
-            end;
-        true -> updateStates(Max, Rest, Result ++ [X])
-    end.
+setNewState(Max) ->
+    element(1, Max)! change.
 
 %%%%% GUI %%%%%
 print({gotoxy,X,Y}) ->
