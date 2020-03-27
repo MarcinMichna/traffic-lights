@@ -1,5 +1,9 @@
 # Traffic Lights symulation
 
+Simulation is written in Erlang, every light works on his own process. <br>
+Main task is to control and synchronize those processes.
+
+
 Simulation modes:<br>
 a) randomly changing lights<br>
 b) writing which lights to change <br>
